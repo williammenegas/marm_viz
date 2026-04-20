@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "marm-viz"
+version = "0.1.0"
+description = "Visualization toolkit for marmoset homecage behavioral data (marm_behavior outputs)."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "William Menegas", email = "william.s.menegas@gmail.com" }]
+keywords = ["marmoset", "behavior", "visualization", "neuroscience", "ethogram"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Visualization",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Intended Audience :: Science/Research",
+]
+dependencies = [
+    "numpy>=1.22",
+    "scipy>=1.8",
+    "matplotlib>=3.5",
+    "h5py>=3.6",
+]
+
+[project.optional-dependencies]
+annotate = ["opencv-python>=4.5"]
+dev = ["pytest>=7", "opencv-python>=4.5"]
+
+[project.urls]
+Homepage = "https://github.com/williammenegas/marm_viz"
+Repository = "https://github.com/williammenegas/marm_viz"
+Issues = "https://github.com/williammenegas/marm_viz/issues"
+
+[project.scripts]
+marm-viz = "marm_viz.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["marm_viz*"]
+
+[tool.setuptools.package-data]
+marm_viz = ["data/*.txt"]
