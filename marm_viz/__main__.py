@@ -148,6 +148,13 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         "permutation from ts_db_list.mat.",
     )
     p.add_argument(
+        "--filtered",
+        action="store_true",
+        help="Use filtered positions from filtered_*.mat (produced "
+        "by marm_filt) instead of raw edges. Falls back to edges "
+        "if filtered file is not available.",
+    )
+    p.add_argument(
         "--time-to-use", "--time_to_use",
         type=float,
         default=None,
@@ -294,6 +301,9 @@ def _run_plot_mode(args, plot_types: "list[str]") -> int:
 
     # Resolve --time-to-use to max_frames.
     build_kw: dict = {"state_remap": args.state_remap}
+    if args.filtered:
+        build_kw["use_filtered"] = True
+        print("[marm_viz] Using filtered positions (from marm_filt)")
     if args.time_to_use is not None:
         build_kw["max_frames"] = int(round(args.time_to_use * args.fps * 60))
         print(f"[marm_viz] Limiting each recording to {args.time_to_use:g} min "

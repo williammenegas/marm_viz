@@ -25,6 +25,7 @@ from ..io.marm_behavior_loader import (
     load_cage_boundaries,
     load_depths,
     load_edges,
+    load_filtered,
     load_hcoord,
     load_hlabel,
     load_stim_center,
@@ -67,6 +68,7 @@ def build_recording(
     state_remap: "str | Path | np.ndarray | None" = None,
     cage_override: "CageGeometry | None" = None,
     stim_xy_pixel_override: "np.ndarray | None" = None,
+    use_filtered: bool = False,
 ) -> Optional[Recording]:
     """Build a :class:`Recording` for one (video × colour) pair from
     marm_behavior outputs.
@@ -108,6 +110,10 @@ def build_recording(
     stim_xy_pixel_override:
         If provided, use this stimulus centre instead of loading
         ``<video_stem>_center.txt``.
+    use_filtered:
+        If True, try to load filtered positions from
+        ``filtered_<video_stem>.mat`` (produced by marm_filt).
+        Falls back to edges data if not available.
 
     Returns
     -------
@@ -123,14 +129,22 @@ def build_recording(
     if color_key not in _COLOR_LONG:
         raise ValueError(f"unknown colour key: {color_key!r}")
 
-    # --- load edges ---
-    try:
-        X_full, Y_full = load_edges(folder, video_stem, color_key)
-    except (FileNotFoundError, KeyError, ValueError):
-        return None
-    except OSError as e:
-        log.warning(f"skipped (corrupt/unreadable mat file: {e})")
-        return None
+    # --- load position data ---
+    X_full, Y_full = None, None
+    if use_filtered:
+        result = load_filtered(folder, video_stem, color_key)
+        if result is not None:
+            X_full, Y_full = result
+            log.debug(f"[build_recording] using filtered data")
+
+    if X_full is None:
+        try:
+            X_full, Y_full = load_edges(folder, video_stem, color_key)
+        except (FileNotFoundError, KeyError, ValueError):
+            return None
+        except OSError as e:
+            log.warning(f"skipped (corrupt/unreadable mat file: {e})")
+            return None
 
     # --- load depths (optional) ---
     depths_full = load_depths(folder, video_stem, color_key)

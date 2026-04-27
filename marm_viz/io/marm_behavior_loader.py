@@ -286,3 +286,47 @@ def discover_video_stems(folder: "str | Path") -> list:
         stem = p.stem[len("edges_"):]
         stems.append(stem)
     return stems
+
+
+def load_filtered(
+    folder: "str | Path",
+    video_stem: str,
+    color_key: str,
+) -> "Tuple[np.ndarray, np.ndarray] | None":
+    """Load filtered (X, Y) positions from ``filtered_<video_stem>.mat``.
+
+    The filtered file is produced by ``marm_filt apply`` and contains
+    variables like ``Red_x_filt``, ``Red_y_filt`` (each ``(T, 21)``).
+
+    Returns ``(X, Y)`` both ``(T, 21)`` or ``None`` if the file or
+    variables are missing.
+    """
+    folder = Path(folder)
+    path = folder / f"filtered_{video_stem}.mat"
+    if not path.exists():
+        return None
+
+    color_key = color_key.lower()[:1]
+    color_long = _COLOR_LONG.get(color_key)
+    if color_long is None:
+        return None
+
+    x_var = f"{color_long}_x_filt"
+    y_var = f"{color_long}_y_filt"
+
+    try:
+        mat = _load_mat_any(path)
+    except Exception:
+        return None
+
+    if x_var not in mat or y_var not in mat:
+        return None
+
+    X = np.asarray(mat[x_var], dtype=float)
+    Y = np.asarray(mat[y_var], dtype=float)
+
+    if X.shape != Y.shape:
+        log.warning(f"filtered X/Y shape mismatch in {path.name}")
+        return None
+
+    return X, Y
