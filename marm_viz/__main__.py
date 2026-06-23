@@ -140,6 +140,26 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         help="Process only this colour. Default: all four.",
     )
     p.add_argument(
+        "--no-red", "--no_red",
+        action="store_true",
+        help="Exclude the Red animal from plotting.",
+    )
+    p.add_argument(
+        "--no-white", "--no_white",
+        action="store_true",
+        help="Exclude the White animal from plotting.",
+    )
+    p.add_argument(
+        "--no-blue", "--no_blue",
+        action="store_true",
+        help="Exclude the Blue animal from plotting.",
+    )
+    p.add_argument(
+        "--no-yellow", "--no_yellow",
+        action="store_true",
+        help="Exclude the Yellow animal from plotting.",
+    )
+    p.add_argument(
         "--state-remap",
         type=Path,
         default=None,
@@ -337,11 +357,36 @@ def _run_plot_mode(args, plot_types: "list[str]") -> int:
     else:
         # Determine colour filter: --animal-to-use overrides --color.
         if animal_color is not None:
-            colors = (animal_color,)
+            candidates = [animal_color]
         elif args.color is not None:
-            colors = (args.color,)
+            candidates = [args.color]
         else:
-            colors = None
+            candidates = ["r", "w", "b", "y"]
+
+        # Subtract animals excluded by --no_* flags.
+        excluded = set()
+        for key, flag in (("r", args.no_red), ("w", args.no_white),
+                          ("b", args.no_blue), ("y", args.no_yellow)):
+            if flag:
+                excluded.add(key)
+
+        # Honor animals_present.txt (one int per colour, Red/White/Blue/
+        # Yellow order: 1 = present, 0 = absent). Missing/unparseable file
+        # leaves all candidates in place.
+        from .annotate.metadata import _read_four_ints
+        present = _read_four_ints(args.folder / "animals_present.txt")
+        if present is not None:
+            for key, p in zip(("r", "w", "b", "y"), present):
+                if not p:
+                    excluded.add(key)
+            print(f"[marm_viz] animals_present.txt -> excluding "
+                  f"{sorted(excluded) or 'none'}")
+
+        colors = tuple(c for c in candidates if c not in excluded)
+        if not colors:
+            print("error: all animals were excluded (check --no_* flags / "
+                  "animals_present.txt)", file=sys.stderr)
+            return 3
         stems = (args.video,) if args.video else None
 
         # Filter stems by --type-to-use if specified.
@@ -599,6 +644,10 @@ def main(argv: "list[str] | None" = None) -> int:
     if args.folder.is_file():
         args.video = args.video or args.folder.stem
         args.folder = args.folder.parent
+    # Resolve to an absolute path so auxiliary files (animals_present.txt,
+    # animal_ID.txt, ...) always land beside the video regardless of how
+    # the folder/file was passed (relative path, bare filename, etc.).
+    args.folder = args.folder.resolve()
 
     if not args.folder.is_dir():
         print(f"error: path does not exist: {args.folder}", file=sys.stderr)
